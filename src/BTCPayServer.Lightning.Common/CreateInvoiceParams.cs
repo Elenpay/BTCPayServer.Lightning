@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using NBitcoin;
 using NBitcoin.Crypto;
@@ -7,7 +8,7 @@ namespace BTCPayServer.Lightning
 {
     public class CreateInvoiceParams
     {
-        public CreateInvoiceParams(LightMoney amount, string description, TimeSpan expiry)
+        public CreateInvoiceParams(LightMoney amount, string description, TimeSpan expiry, List<RouteHints> routeHints = null)
         {
             if (amount == null)
                 throw new ArgumentNullException(nameof(amount));
@@ -17,8 +18,9 @@ namespace BTCPayServer.Lightning
             Amount = amount;
             Description = description;
             Expiry = expiry;
+            RouteHints = routeHints;
         }
-        
+
         [Obsolete("Set the Description and turn DescriptionHashOnly to true instead")]
         public CreateInvoiceParams(LightMoney amount, uint256 descriptionHash, TimeSpan expiry)
         {
@@ -52,5 +54,6 @@ namespace BTCPayServer.Lightning
         public bool DescriptionHashOnly { get; set; }
         public TimeSpan Expiry { get; set; }
         public bool PrivateRouteHints { get; set; }
+        public List<RouteHints> RouteHints { get; set; }
     }
 }
