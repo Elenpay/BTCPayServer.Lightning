@@ -14,10 +14,10 @@ using System.Text;
 
 namespace BTCPayServer.Lightning.LND
 {
-    #pragma warning disable // Disable all warnings
+#pragma warning disable // Disable all warnings
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "11.11.1.0")]
-     partial class LndSwaggerClient
+    partial class LndSwaggerClient
     {
         private System.Lazy<Newtonsoft.Json.JsonSerializerSettings> _settings;
         private string _baseUrl = "";
@@ -209,10 +209,14 @@ namespace BTCPayServer.Lightning.LND
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl).Append("/v1/channels?");
-            if (active_only != null) urlBuilder_.Append("active_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(active_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (inactive_only != null) urlBuilder_.Append("inactive_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(inactive_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (public_only != null) urlBuilder_.Append("public_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(public_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (private_only != null) urlBuilder_.Append("private_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(private_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (active_only != null)
+                urlBuilder_.Append("active_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(active_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (inactive_only != null)
+                urlBuilder_.Append("inactive_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(inactive_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (public_only != null)
+                urlBuilder_.Append("public_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(public_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (private_only != null)
+                urlBuilder_.Append("private_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(private_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             urlBuilder_.Length--;
 
             var client_ = _httpClient;
@@ -912,8 +916,10 @@ namespace BTCPayServer.Lightning.LND
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl).Append("/v1/genseed?");
-            if (aezeed_passphrase != null) urlBuilder_.Append("aezeed_passphrase=").Append(System.Uri.EscapeDataString(System.Convert.ToString(aezeed_passphrase, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (seed_entropy != null) urlBuilder_.Append("seed_entropy=").Append(System.Uri.EscapeDataString(System.Convert.ToString(seed_entropy, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (aezeed_passphrase != null)
+                urlBuilder_.Append("aezeed_passphrase=").Append(System.Uri.EscapeDataString(System.Convert.ToString(aezeed_passphrase, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (seed_entropy != null)
+                urlBuilder_.Append("seed_entropy=").Append(System.Uri.EscapeDataString(System.Convert.ToString(seed_entropy, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             urlBuilder_.Length--;
 
             var client_ = _httpClient;
@@ -1415,7 +1421,8 @@ namespace BTCPayServer.Lightning.LND
             urlBuilder_.Append(BaseUrl).Append("/v1/graph/routes/{pub_key}/{amt}?");
             urlBuilder_.Replace("{pub_key}", System.Uri.EscapeDataString(System.Convert.ToString(pub_key, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{amt}", System.Uri.EscapeDataString(System.Convert.ToString(amt, System.Globalization.CultureInfo.InvariantCulture)));
-            if (num_routes != null) urlBuilder_.Append("num_routes=").Append(System.Uri.EscapeDataString(System.Convert.ToString(num_routes.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (num_routes != null)
+                urlBuilder_.Append("num_routes=").Append(System.Uri.EscapeDataString(System.Convert.ToString(num_routes.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             urlBuilder_.Length--;
 
             var client_ = _httpClient;
@@ -1667,8 +1674,10 @@ namespace BTCPayServer.Lightning.LND
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl).Append("/v1/invoices?");
-            if (pending_only.HasValue) urlBuilder_.Append("pending_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(pending_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (index_offset.HasValue) urlBuilder_.Append("index_offset=").Append(System.Uri.EscapeDataString(System.Convert.ToString(index_offset.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (pending_only.HasValue)
+                urlBuilder_.Append("pending_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(pending_only.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (index_offset.HasValue)
+                urlBuilder_.Append("index_offset=").Append(System.Uri.EscapeDataString(System.Convert.ToString(index_offset.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             urlBuilder_.Length--;
 
             var client_ = _httpClient;
@@ -1975,7 +1984,7 @@ namespace BTCPayServer.Lightning.LND
         {
             return ListPaymentsAsync(include_pending, index_offset, System.Threading.CancellationToken.None);
         }
-        
+
         /// <summary>* lncli: `listpayments`
         /// ListPayments returns a list of all outgoing payments.</summary>
         /// <param name="include_pending">/ Toggles if all invoices should be returned, or only those that are currently unsettled.</param>
@@ -1986,8 +1995,10 @@ namespace BTCPayServer.Lightning.LND
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl).Append("/v1/payments?");
-            if (include_pending.HasValue) urlBuilder_.Append("pending_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(include_pending.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            if (index_offset.HasValue) urlBuilder_.Append("index_offset=").Append(System.Uri.EscapeDataString(System.Convert.ToString(index_offset.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (include_pending.HasValue)
+                urlBuilder_.Append("pending_only=").Append(System.Uri.EscapeDataString(System.Convert.ToString(include_pending.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            if (index_offset.HasValue)
+                urlBuilder_.Append("index_offset=").Append(System.Uri.EscapeDataString(System.Convert.ToString(index_offset.Value, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             urlBuilder_.Length--;
 
             var client_ = _httpClient;
@@ -2294,9 +2305,9 @@ namespace BTCPayServer.Lightning.LND
                 return ConnectionResult.Ok;
             }
             catch (SwaggerException ex) when (ex.AsLNDError() is LNDError err && err.Error.Contains("already connected"))
-			{
+            {
                 return ConnectionResult.Ok;
-			}
+            }
             catch (SwaggerException ex) when (ex.AsLNDError() is LNDError err)
             {
                 // Already connected error
@@ -3610,7 +3621,7 @@ namespace BTCPayServer.Lightning.LND
         // deprecated
         private string _balance;
         private string _pending_open_balance;
-        
+
         private LnrpcAmount _local_balance;
         private LnrpcAmount _remote_balance;
         private LnrpcAmount _unsettled_local_balance;
@@ -6347,7 +6358,7 @@ namespace BTCPayServer.Lightning.LND
                 handler(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
         }
     }
-    
+
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "9.9.11.0 (Newtonsoft.Json v9.0.0.0)")]
     public partial class LnrpcInvoiceHTLC : System.ComponentModel.INotifyPropertyChanged
     {
@@ -6497,7 +6508,7 @@ namespace BTCPayServer.Lightning.LND
                 }
             }
         }
-        
+
         [Newtonsoft.Json.JsonProperty("custom_records", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public Dictionary<ulong, string> CustomRecords
         {
@@ -8367,7 +8378,7 @@ namespace BTCPayServer.Lightning.LND
         /// A list of hop hints that when chained together can assist in reaching a
         /// specific destination.</summary>
         [Newtonsoft.Json.JsonProperty("hop_hints", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public System.Collections.ObjectModel.ObservableCollection<LnrpcHopHint> Hop_hints
+        public System.Collections.ObjectModel.ObservableCollection<LnrpcHopHint> hopHints
         {
             get { return _hop_hints; }
             set
@@ -8717,7 +8728,7 @@ namespace BTCPayServer.Lightning.LND
         private string _payment_request;
         private int? _final_cltv_delta;
         private bool? _allow_self_payment;
-        private Dictionary<ulong,string> _dest_custom_records;
+        private Dictionary<ulong, string> _dest_custom_records;
 
         [Newtonsoft.Json.JsonProperty("dest", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Dest
@@ -8867,9 +8878,9 @@ namespace BTCPayServer.Lightning.LND
                 }
             }
         }
-        
+
         [Newtonsoft.Json.JsonProperty("dest_custom_records", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public Dictionary<ulong,string> Dest_custom_records
+        public Dictionary<ulong, string> Dest_custom_records
         {
             get { return _dest_custom_records; }
             set
