@@ -417,8 +417,7 @@ namespace BTCPayServer.Lightning.LND
                         LocalBalance = LightMoney.Satoshis(long.Parse(c.Local_balance)),
                         ChannelPoint = new OutPoint(txHash, outIndex),
                         ChanId = c.Chan_id,
-                        RemoteBalance = c.Remote_balance
-
+                        RemoteBalance = LightMoney.Satoshis(long.Parse(c.Remote_balance)),
                     }).ToArray();
         }
 
