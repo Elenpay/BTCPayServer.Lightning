@@ -1,5 +1,6 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
+
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -327,15 +328,42 @@ namespace BTCPayServer.Lightning.LND
             var strAmount = ConvertInv.ToString(req.Amount.ToUnit(LightMoneyUnit.MilliSatoshi));
             var strExpiry = ConvertInv.ToString(Math.Round(req.Expiry.TotalSeconds, 0));
 
+            var rpcRouteHints = new ObservableCollection<LnrpcRouteHint>();
+
+            req.RouteHints?.ForEach(rh =>
+            {
+                var rpcRouteHint = new LnrpcRouteHint
+                {
+                    Hop_hints = new ObservableCollection<LnrpcHopHint>()
+                };
+                rh.Hints.ForEach(hh =>
+                {
+                    rpcRouteHint.Hop_hints.Add(new LnrpcHopHint
+                    {
+                        Chan_id = hh.ChanId,
+                        Cltv_expiry_delta = hh.CltvExpiryDelta,
+                        Fee_base_msat = hh.FeeBaseMsat,
+                        Fee_proportional_millionths = hh.FeeProportionalMillionths,
+                        Node_id = hh.NodeId
+                    });
+                });
+                rpcRouteHints.Add(rpcRouteHint);
+            });
+
             var lndRequest = new LnrpcInvoice
             {
                 ValueMSat = strAmount,
                 Memo = req.Description,
                 Description_hash = req.DescriptionHash?.ToBytes(false),
                 Expiry = strExpiry,
-                Private = req.PrivateRouteHints
+                Private = req.PrivateRouteHints,
+                Route_hints = rpcRouteHints
             };
             var resp = await SwaggerClient.AddInvoiceAsync(lndRequest, cancellation);
+
+            //Decode pay req to get routes
+            var payReq = BOLT11PaymentRequest.Parse(resp.Payment_request, Network);
+            var routes = payReq.Routes.ToList();
 
             var invoice = new LightningInvoice
             {
@@ -344,7 +372,18 @@ namespace BTCPayServer.Lightning.LND
                 BOLT11 = resp.Payment_request,
                 Status = LightningInvoiceStatus.Unpaid,
                 ExpiresAt = DateTimeOffset.UtcNow + req.Expiry,
-                PaymentHash = new uint256(resp.R_hash, false).ToString()
+                PaymentHash = new uint256(resp.R_hash, false).ToString(),
+                RouteHints = routes.Select(r => new RouteHints
+                {
+                    Hints = r.Hops.Select(h => new HopHint
+                    {
+                        NodeId = h.PubKey.ToString(),
+                        ChanId = h.ShortChannelId.ToString(),
+                        FeeBaseMsat = h.FeeBase,
+                        FeeProportionalMillionths = (long)h.FeeProportional,
+                        CltvExpiryDelta = h.CLTVExpiryDelay
+                    }).ToList()
+                }).ToList()
             };
             return invoice;
         }
@@ -376,7 +415,10 @@ namespace BTCPayServer.Lightning.LND
                         IsActive = c.Active ?? false,
                         Capacity = LightMoney.Satoshis(long.Parse(c.Capacity)),
                         LocalBalance = LightMoney.Satoshis(long.Parse(c.Local_balance)),
-                        ChannelPoint = new OutPoint(txHash, outIndex)
+                        ChannelPoint = new OutPoint(txHash, outIndex),
+                        ChanId = c.Chan_id,
+                        RemoteBalance = c.Remote_balance
+
                     }).ToArray();
         }
 
@@ -424,14 +466,14 @@ namespace BTCPayServer.Lightning.LND
             var onchainResponse = walletBalance.Result;
             var offchainResponse = channelBalance.Result;
             var pendingResponse = pendingChannels.Result;
-            
+
             var closing = new LightMoney(0);
             closing += pendingResponse.Pending_closing_channels.Sum(c => c.Channel.Local_balance);
             closing += pendingResponse.Pending_force_closing_channels.Sum(c => c.Channel.Local_balance);
             closing += pendingResponse.Waiting_close_channels.Sum(c => c.Channel.Local_balance);
 
             var onchain = new OnchainBalance
-            { 
+            {
                 Confirmed = string.IsNullOrEmpty(onchainResponse.Confirmed_balance) ? null : Money.Satoshis(long.Parse(onchainResponse.Confirmed_balance)),
                 Unconfirmed = string.IsNullOrEmpty(onchainResponse.Unconfirmed_balance) ? null : Money.Satoshis(long.Parse(onchainResponse.Unconfirmed_balance)),
                 Reserved = string.IsNullOrEmpty(onchainResponse.Locked_balance) ? null : Money.Satoshis(long.Parse(onchainResponse.Locked_balance))
@@ -443,7 +485,7 @@ namespace BTCPayServer.Lightning.LND
                 Remote = new LightMoney(offchainResponse.Remote_balance.Msat),
                 Closing = closing
             };
-            
+
             return new LightningNodeBalance(onchain, offchain);
         }
 
@@ -561,7 +603,18 @@ namespace BTCPayServer.Lightning.LND
                 AmountReceived = string.IsNullOrWhiteSpace(resp.AmountPaid) ? null : new LightMoney(ConvertInv.ToInt64(resp.AmountPaid), LightMoneyUnit.MilliSatoshi),
                 BOLT11 = resp.Payment_request,
                 Status = LightningInvoiceStatus.Unpaid,
-                ExpiresAt = DateTimeOffset.FromUnixTimeSeconds(ConvertInv.ToInt64(resp.Creation_date) + ConvertInv.ToInt64(resp.Expiry))
+                ExpiresAt = DateTimeOffset.FromUnixTimeSeconds(ConvertInv.ToInt64(resp.Creation_date) + ConvertInv.ToInt64(resp.Expiry)),
+                RouteHints = resp.Route_hints?.Select(rh => new RouteHints
+                {
+                    Hints = rh.Hop_hints.Select(hh => new HopHint
+                    {
+                        NodeId = hh.Node_id,
+                        ChanId = hh.Chan_id,
+                        FeeBaseMsat = hh.Fee_base_msat ?? 0,
+                        FeeProportionalMillionths = hh.Fee_proportional_millionths ?? 0,
+                        CltvExpiryDelta = hh.Cltv_expiry_delta ?? 144
+                    }).ToList()
+                }).ToList()
             };
 
             if (resp.Htlcs != null && resp.Htlcs.Any())
@@ -573,7 +626,7 @@ namespace BTCPayServer.Lightning.LND
                     .Select(x => x.First())
                     .ToDictionary(x => x.Key, y => y.Value);
             }
-            
+
             if (resp.Settled == true)
             {
                 invoice.PaidAt = DateTimeOffset.FromUnixTimeSeconds(ConvertInv.ToInt64(resp.Settle_date));
@@ -640,7 +693,7 @@ retry:
                         Payment_hash = Encoders.Base64.EncodeData(payParams.PaymentHash.ToBytes()),
                         Dest_custom_records = payParams.CustomRecords
                     };
-                
+
                 if (payParams?.MaxFeePercent > 0)
                 {
                     req.Fee_limit ??= new LnrpcFeeLimit();

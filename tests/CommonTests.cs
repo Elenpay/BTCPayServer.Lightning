@@ -51,12 +51,12 @@ namespace BTCPayServer.Lightning.Tests
                 var beyondExpiry = client.Client is LndHubLightningClient
                     ? DateTimeOffset.UtcNow + TimeSpan.FromDays(1) // LNDhub has a fixed expiry of 1 day
                     : DateTimeOffset.UtcNow + TimeSpan.FromMinutes(6);
-                var expectedAmount = client.Client is LndHubLightningClient 
-                    ? LightMoney.Satoshis(amount/1000) // LNDhub accounts with sats instead of msat
+                var expectedAmount = client.Client is LndHubLightningClient
+                    ? LightMoney.Satoshis(amount / 1000) // LNDhub accounts with sats instead of msat
                     : LightMoney.MilliSatoshis(amount);
                 var createdInvoice = await client.Client.CreateInvoice(amount, "CanCreateInvoice", expiry);
                 var retrievedInvoice = await client.Client.GetInvoice(createdInvoice.Id);
-                
+
                 AssertUnpaid(createdInvoice, expectedAmount);
                 Assert.True(createdInvoice.ExpiresAt > DateTimeOffset.UtcNow);
                 Assert.True(createdInvoice.ExpiresAt < beyondExpiry);
@@ -71,7 +71,7 @@ namespace BTCPayServer.Lightning.Tests
                 await Task.Delay(1000);
                 var invoices = await client.Client.ListInvoices();
                 Assert.Contains(invoices, invoice => invoice.Id == createdInvoice.Id);
-                
+
                 // check that it's also present in the pending only list
                 var onlyPending = new ListInvoicesParams { PendingOnly = true };
                 invoices = await client.Client.ListInvoices(onlyPending);
@@ -127,6 +127,61 @@ namespace BTCPayServer.Lightning.Tests
         }
 
         [Fact(Timeout = Timeout)]
+        public async Task CanCreateInvoiceWithRoutingHint()
+        {
+            await WaitServersAreUp();
+            foreach (var client in Tester.GetLightningClients())
+            {
+                switch (client.Client)
+                {
+                    case LndClient _:
+                        Logs.Tester.LogInformation($"{client.Name}: {nameof(CanCreateInvoiceWithRoutingHint)}");
+
+                        //get some channels info
+                        var channels = await client.Client.ListChannels();
+                        Assert.NotEmpty(channels);
+
+                        var createdInvoice = await client.Client.CreateInvoice(new CreateInvoiceParams(10000, "CanCreateInvoiceWithRoutingHint", TimeSpan.FromMinutes(5), new List<RouteHints>
+                    {
+                        new RouteHints
+                        {
+                            Hints = new List<HopHint>
+                            {
+                                new HopHint
+                                {
+                                    ChanId = channels.First().ChanId,
+                                    NodeId = channels.First().RemoteNode.ToString(),
+                                    CltvExpiryDelta = 144,
+                                    FeeBaseMsat = 0,
+                                    FeeProportionalMillionths = 0
+                                },
+                            }
+                        }
+                    }));
+
+                        Assert.NotNull(createdInvoice.RouteHints);
+                        Assert.NotEmpty(createdInvoice.RouteHints);
+
+                        var retrievedInvoice = await client.Client.GetInvoice(createdInvoice.Id);
+                        Assert.NotNull(retrievedInvoice.RouteHints);
+                        Assert.NotEmpty(retrievedInvoice.RouteHints);
+                        Logs.Tester.LogInformation(JObject.FromObject(createdInvoice).ToString());
+                        Logs.Tester.LogInformation(JObject.FromObject(retrievedInvoice).ToString());
+                        AssertUnpaid(createdInvoice);
+                        AssertUnpaid(retrievedInvoice);
+                        var createdInvoiceBOLT = BOLT11PaymentRequest.Parse(createdInvoice.BOLT11, Network.RegTest);
+                        var retrievedInvoiceBOLT = BOLT11PaymentRequest.Parse(retrievedInvoice.BOLT11, Network.RegTest);
+                        Assert.Equal(createdInvoiceBOLT.PaymentHash, retrievedInvoiceBOLT.PaymentHash);
+                        break;
+
+                    default:
+
+                        break;
+                }
+            }
+        }
+
+        [Fact(Timeout = Timeout)]
         public async Task CanCancelInvoices()
         {
             async Task CreateAndCancel(ILightningClient lightningClient)
@@ -138,9 +193,9 @@ namespace BTCPayServer.Lightning.Tests
                 i = await lightningClient.GetInvoice(i.Id);
                 Assert.Null(i);
             }
-            
+
             await WaitServersAreUp();
-            
+
             foreach (var client in Tester.GetLightningClients())
             {
                 switch (client.Client)
@@ -166,7 +221,7 @@ namespace BTCPayServer.Lightning.Tests
         {
             var network = Tester.Network;
             ILightningClientFactory factory = new LightningClientFactory(network);
-                
+
             var connectionStrings = Docker
                 ? new List<string>
                 {
@@ -182,7 +237,7 @@ namespace BTCPayServer.Lightning.Tests
                     "type=clightning;server=tcp://127.0.0.1:48532",
                     "type=eclair;server=http://127.0.0.1:4570;password=bukkake"
                 };
-            
+
             // LNDhub needs an account first
             var lndhubServer = Docker ? "http://lndhub:3000" : "http://127.0.0.1:42923";
             var lndhubClient = new LndHubLightningClient(new Uri(lndhubServer), "login", "password", network);
@@ -196,24 +251,25 @@ namespace BTCPayServer.Lightning.Tests
                 // check connection string can be parsed and turned into a string again
                 LightningConnectionString.TryParse(connectionString, false, out var parsed);
                 Assert.NotNull(parsed.ToString());
-                
+
                 // apply connection string and create invoice   
                 var client = factory.Create(connectionString);
-                if (!clientTypes.Contains(client.GetType())) continue;
-                
+                if (!clientTypes.Contains(client.GetType()))
+                    continue;
+
                 var createdInvoice = await client.CreateInvoice(10000, "CanCreateInvoiceUsingConnectionString", TimeSpan.FromMinutes(5));
                 var retrievedInvoice = await client.GetInvoice(createdInvoice.Id);
                 AssertUnpaid(createdInvoice);
                 AssertUnpaid(retrievedInvoice);
             }
         }
-        
+
         [Fact]
         public void CanParseCustomConnectionString()
         {
             var network = Tester.Network;
             ILightningClientFactory factory = new LightningClientFactory(network);
-                
+
             var connectionStrings = new List<string>
             {
                 "lndhub://login:password@http://server.onion"
@@ -225,7 +281,7 @@ namespace BTCPayServer.Lightning.Tests
                 // check connection string can be parsed and turned into a string again
                 LightningConnectionString.TryParse(connectionString, false, out var parsed);
                 Assert.NotNull(parsed.ToString());
-                
+
                 // apply connection string and check client
                 var client = factory.Create(connectionString);
                 Assert.Contains(client.GetType(), clientTypes);
@@ -268,7 +324,7 @@ namespace BTCPayServer.Lightning.Tests
             // for channel values to be in reasonable bounds
             var lowerBound = LightMoney.Zero;
             var upperBound = LightMoney.Satoshis(16777215);
-            
+
             await WaitServersAreUp();
             foreach (var test in Tester.GetTestedPairs())
             {
@@ -284,7 +340,7 @@ namespace BTCPayServer.Lightning.Tests
                         balance = await client.GetBalance();
                         // onchain
                         Assert.True(balance.OnchainBalance.Confirmed > 0L);
-                        Assert.Equal(Money.Zero,balance.OnchainBalance.Unconfirmed);
+                        Assert.Equal(Money.Zero, balance.OnchainBalance.Unconfirmed);
                         // offchain
                         Assert.NotNull(balance.OffchainBalance);
                         Assert.Equal(LightMoney.Zero, balance.OffchainBalance.Opening);
@@ -380,7 +436,7 @@ namespace BTCPayServer.Lightning.Tests
 
                 var info = await dest.GetInfo();
                 var node = info.NodeInfoList.First();
-                
+
                 var amount = LightMoney.Satoshis(21);
                 var preimage = new byte[32];
                 new Random().NextBytes(preimage);
@@ -390,7 +446,7 @@ namespace BTCPayServer.Lightning.Tests
                 var val5482373484 = Encoders.Base64.EncodeData(preimage);
                 var val696969 = Encoders.Base64.EncodeData(Encoding.Default.GetBytes("123456"));
                 var val112111100 = Encoders.Base64.EncodeData(Encoding.Default.GetBytes("wal_hrDHs0RBEM576"));
-                var tlvData = new Dictionary<ulong,string>
+                var tlvData = new Dictionary<ulong, string>
                 {
                     { 696969, val696969 },
                     { 112111100, val112111100 },
@@ -427,7 +483,7 @@ namespace BTCPayServer.Lightning.Tests
                         });
                         break;
                 }
-                
+
                 // Check the custom records are present in the invoice
                 // Only works for LND right now, Core Lightning support might come, see:
                 // https://github.com/ElementsProject/lightning/issues/4470#issuecomment-873599548
@@ -485,7 +541,7 @@ retry:
             {
                 Logs.Tester.LogInformation($"{test.Name}: {nameof(CanPayInvoiceAndReceive)}");
                 await EnsureConnectedToDestinations(test);
-                
+
                 var expiry = TimeSpan.FromSeconds(5000);
                 var amount = LightMoney.Satoshis(21);
                 var invoice = await test.Merchant.CreateInvoice(amount, "CanPayInvoiceAndReceive", expiry);
@@ -509,7 +565,7 @@ retry:
                     // The senders LNDhub wallet needs some initial funds.
                     await FundLndHubWallet(test.Customer, LightMoney.Satoshis(2100));
                 }
-                
+
                 using var listener = await test.Merchant.Listen();
                 var waiting = listener.WaitInvoice(default);
                 var paidReply = await test.Customer.Pay(invoice.BOLT11);
@@ -667,7 +723,7 @@ retry:
 
                 var info = await dest.GetInfo();
                 var node = info.NodeInfoList.First();
-                
+
                 switch (src)
                 {
                     case LndHubLightningClient _:
@@ -736,7 +792,7 @@ retry:
                     // The senders LNDhub wallet needs some initial funds.
                     await FundLndHubWallet(src, LightMoney.Satoshis(2100));
                 }
-                
+
                 var payResponse = await src.Pay(merchantInvoice1.BOLT11, waitToken);
                 Assert.Equal(PayResult.Ok, payResponse.Result);
                 AssertEqual(amount1, payResponse.Details.TotalAmount);
@@ -790,7 +846,7 @@ retry:
             {
                 await EnsureConnectedToDestinations(client);
                 Logs.Tester.LogInformation(client.Customer.GetType().Name);
-                
+
                 switch (client.Customer)
                 {
                     case LndHubLightningClient _:
@@ -894,9 +950,9 @@ retry:
             Assert.True((p.FeatureBits | (FeatureBits.MPPOptional | FeatureBits.PaymentAddrRequired | FeatureBits.TLVOnionPayloadOptional)) ==
                 (FeatureBits.MPPOptional | FeatureBits.PaymentAddrRequired | FeatureBits.TLVOnionPayloadOptional));
             Assert.True(p.VerifySignature());
-            
+
             p = BOLT11PaymentRequest.Parse("lnbcrt1p3w0278pp5n8ky9m98m7ppjw4gr4mhgvxhm8r0830w870raccvu6tgnavrs60sdqqcqzpgxqyz5vqsp5v50decplk2phztne8xqjxyvrrr2k0nf2q5sflnn4vqc6mc048fds9q2gqqqqqyssqk6tlvhclzm7ejg6p8szg34tt28puz5hvmuv93rkhnaq63t6k92sk0q2g7arltwqahvhg3ks6l922zsdtnf7wt540ypmqqulzvke8gyqqttv7fu", Network.RegTest);
-            Assert.True((p.FeatureBits | (FeatureBits.MPPOptional | FeatureBits.PaymentAddrRequired | FeatureBits.TLVOnionPayloadOptional | FeatureBits.PaymentMetadataRequired)) == 
+            Assert.True((p.FeatureBits | (FeatureBits.MPPOptional | FeatureBits.PaymentAddrRequired | FeatureBits.TLVOnionPayloadOptional | FeatureBits.PaymentMetadataRequired)) ==
                         (FeatureBits.MPPOptional | FeatureBits.PaymentAddrRequired | FeatureBits.TLVOnionPayloadOptional | FeatureBits.PaymentMetadataRequired));
 
             p = BOLT11PaymentRequest.Parse("lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp", Network.Main);
@@ -1187,11 +1243,11 @@ retry:
             Assert.True(LightningConnectionString.TryParse("type=charge;server=http://api-token:foiewnccewuify@127.0.0.1:54938/;allowinsecure=true", out conn));
             Assert.Equal("type=charge;server=http://127.0.0.1:54938/;api-token=foiewnccewuify;allowinsecure=true", conn.ToString());
             Assert.True(LightningConnectionString.TryParse("type=lnbank;server=https://mybtcpay.com/;api-token=myapitoken", false, out conn));
-            
+
             Assert.True(LightningConnectionString.TryParse("type=lndhub;server=https://mylndhub:password@lndhub.io/", false, out conn));
             Assert.Equal("mylndhub", conn.Username);
             Assert.Equal("password", conn.Password);
-            
+
             // Allow insecure checks
             Assert.False(LightningConnectionString.TryParse("type=lndhub;server=http://mylndhub:password@lndhub.io/", false, out conn));
             Assert.True(LightningConnectionString.TryParse("type=lndhub;server=http://mylndhub:password@lndhub.io/;allowinsecure=true", false, out conn));
@@ -1248,13 +1304,13 @@ retry:
                 WaitServersAreUp($"{test.Name} Customer ({(await test.Customer.GetInfo()).NodeInfoList.Select(e => e.NodeId).First()}):", test.Customer),
                 WaitServersAreUp($"{test.Name} Merchant ({(await test.Merchant.GetInfo()).NodeInfoList.Select(e => e.NodeId).First()}):", test.Merchant));
             Logs.Tester.LogInformation($"{test.Name}: Connecting channels...");
-            
+
             var cashcow = await GetRPCClient();
             var customerNodeClient = test.Customer is LndHubLightningClient ? Tester.CreateLndClient() : test.Customer;
             var merchantNodeClient = test.Merchant is LndHubLightningClient ? Tester.CreateLndClientDest() : test.Merchant;
             await ConnectChannels.ConnectAll(cashcow, new[] { customerNodeClient }, new[] { merchantNodeClient });
             Logs.Tester.LogInformation($"{test.Name}: Channels connected");
-            
+
             var channelsCustomer = await customerNodeClient.ListChannels();
             var channelsMerchant = await merchantNodeClient.ListChannels();
             foreach (var channel in channelsCustomer)

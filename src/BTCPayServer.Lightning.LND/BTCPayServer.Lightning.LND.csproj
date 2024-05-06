@@ -4,10 +4,10 @@
 		<TargetFrameworks>net6.0;netstandard2.0</TargetFrameworks>
 		<Version>1.4.17</Version>
 		<LangVersion>10</LangVersion>
-		<PackageId>BTCPayServer.Lightning.LND</PackageId>
+		<PackageId>ElenPAY.BTCPayServer.Lightning.LND</PackageId>
 		<Description>Client library for LND to build Lightning Network Apps in C#.</Description>
-		<PackageProjectUrl>https://github.com/btcpayserver/BTCPayServer.Lightning</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/btcpayserver/BTCPayServer.Lightning</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/Elenpay/BTCPayServer.Lightning</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Elenpay/BTCPayServer.Lightning</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageTags>lightning;bitcoin;lnd;lapps</PackageTags>
 	</PropertyGroup>
